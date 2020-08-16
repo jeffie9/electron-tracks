@@ -1,0 +1,15 @@
+<p>layout works!</p>
+
+<div class="row">
+    <div class="col-sm-12">
+      <div class="wrapper" #wrapper>
+        <canvas id="canvas" style="z-index: 0" #canvas [height]="layoutWidth" [width]="layoutLength"></canvas>
+        <canvas id="glass" style="z-index: 1" #glass [height]="layoutWidth" [width]="layoutLength"
+            (mousedown)="mouseDown($event)"
+            (mousemove)="mouseMove($event)"
+            (mouseup)="mouseUp($event)"
+            (mouseleave)="mouseUp($event)"></canvas>
+      </div>
+    </div>
+</div>
+  
