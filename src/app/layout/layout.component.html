@@ -1,15 +1,23 @@
 <p>layout works!</p>
 
-<div class="row">
-    <div class="col-sm-12">
-      <div class="wrapper" #wrapper>
-        <canvas id="canvas" style="z-index: 0" #canvas [height]="layoutWidth" [width]="layoutLength"></canvas>
-        <canvas id="glass" style="z-index: 1" #glass [height]="layoutWidth" [width]="layoutLength"
-            (mousedown)="mouseDown($event)"
-            (mousemove)="mouseMove($event)"
-            (mouseup)="mouseUp($event)"
-            (mouseleave)="mouseUp($event)"></canvas>
-      </div>
+<mat-button-toggle-group name="toolButtonGroup" aria-label="Tool Bar">
+  <mat-button-toggle value="pointer">Pointer</mat-button-toggle>
+  <mat-button-toggle value="move">Move</mat-button-toggle>
+  <mat-button-toggle value="rotate">Rotate</mat-button-toggle>
+</mat-button-toggle-group>
+
+<mat-drawer-container>
+  <mat-drawer mode="side" opened><app-library></app-library></mat-drawer>
+  <mat-drawer-content>
+    <div class="wrapper" #wrapper>
+      <canvas id="canvas" style="z-index: 0" #canvas [height]="layoutWidth" [width]="layoutLength"></canvas>
+      <canvas id="glass" style="z-index: 1" #glass [height]="layoutWidth" [width]="layoutLength"
+          (mousedown)="mouseDown($event)"
+          (mousemove)="mouseMove($event)"
+          (mouseup)="mouseUp($event)"
+          (mouseleave)="mouseUp($event)"></canvas>
     </div>
-</div>
+  </mat-drawer-content>
+</mat-drawer-container>
+
   

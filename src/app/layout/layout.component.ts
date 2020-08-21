@@ -6,6 +6,7 @@ import { Track, TrackRef } from '../track';
 import { TrackService } from '../track.service';
 import { Matrix } from '../matrix';
 import { Layout } from '../layout';
+import { MatButtonToggleGroup } from '@angular/material/button-toggle';
 
 @Component({
   selector: 'app-layout',
@@ -18,6 +19,7 @@ export class LayoutComponent implements OnInit {
   @ViewChild('glass', { static: true }) glass !: ElementRef<HTMLCanvasElement>;
   @ViewChild('createLayoutModal', { static: true }) createLayoutModal: TemplateRef<any>;
   @ViewChild('openLayoutModal', { static: true }) openLayoutModal: TemplateRef<any>;
+  @ViewChild(MatButtonToggleGroup) toolButtonGroup : MatButtonToggleGroup;
   private canvasContext: CanvasRenderingContext2D;
   private glassContext: CanvasRenderingContext2D;
   private trackLibrarySelected: Subscription;
@@ -30,7 +32,6 @@ export class LayoutComponent implements OnInit {
   corX: number;
   corY: number;
   startA: number;
-  tool: 'pointer'|'move'|'rotate' = 'pointer';
   formOpen = false;
   tracks = new Array<TrackRef>();
   layout: Layout;
@@ -156,7 +157,7 @@ drawGlass(offsetX: number, offsetY: number, angle: number) {
 
             this.drawCanvas();
             this.drawGlass(0, 0, 0);
-        } else if (this.tool === 'rotate') {
+        } else if (this.toolButtonGroup.value === 'rotate') {
           this.startX = mx;
           this.startY = my;
           this.dragging = true;
@@ -184,7 +185,8 @@ drawGlass(offsetX: number, offsetY: number, angle: number) {
 
   mouseMove(e: MouseEvent) {
       if (e.buttons === 1) {
-          // tell the browser we're handling this mouse event
+        console.log('mouseMove', this.toolButtonGroup.value);
+        // tell the browser we're handling this mouse event
           e.preventDefault();
           e.stopPropagation();
 
@@ -193,9 +195,9 @@ drawGlass(offsetX: number, offsetY: number, angle: number) {
           // get the current mouse position
           let mx = e.clientX - rect.left;
           let my = e.clientY - rect.top;
-          if (this.tool === 'move') {
+          if (this.toolButtonGroup.value === 'move') {
               this.drawGlass(mx - this.startX, my - this.startY, 0);
-          } else if (this.tool === 'rotate') {
+          } else if (this.toolButtonGroup.value === 'rotate') {
               let a = Math.atan2(my - this.corY, mx - this.corX) - this.startA;
               if (a > 2 * Math.PI) {
                   a -= 2 * Math.PI;
@@ -222,12 +224,12 @@ mouseUp(e: MouseEvent) {
         
         // move the tracks before finding the closest pair
         let selectedTracks = this.tracks.filter(tr => tr.selected);
-        if (this.tool === 'move') {
+        if (this.toolButtonGroup.value === 'move') {
           selectedTracks.forEach(tr => {
               tr.xc += mx - this.startX;
               tr.yc += my - this.startY;
           });
-        } else if (this.tool === 'rotate') {
+        } else if (this.toolButtonGroup.value === 'rotate') {
             let a = Math.atan2(my - this.corY, mx - this.corX) - this.startA;
             let mat = new Matrix()
                 .translate(this.corX, this.corY)
@@ -283,13 +285,13 @@ mouseUp(e: MouseEvent) {
               this.drawCanvas();
               break;
           case 'KeyM':
-              this.tool = 'move';
+            this.toolButtonGroup.value = 'move';
               break;
           case 'KeyR':
-              this.tool = 'rotate';
+            this.toolButtonGroup.value = 'rotate';
               break;
           case 'Space':
-              this.tool = 'pointer';
+            this.toolButtonGroup.value = 'pointer';
               break;
           }
       }

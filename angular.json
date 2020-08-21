@@ -25,11 +25,28 @@
             ],
             "styles": [
               "./node_modules/@angular/material/prebuilt-themes/indigo-pink.css",
-              "src/styles.css"
+              "src/styles.scss"
             ],
             "scripts": []
           },
           "configurations": {
+            "web": {
+              "optimization": false,
+              "outputHashing": "all",
+              "sourceMap": true,
+              "extractCss": true,
+              "namedChunks": false,
+              "aot": false,
+              "extractLicenses": true,
+              "vendorChunk": false,
+              "buildOptimizer": false,
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.web.ts"
+                }
+              ]
+            },
             "production": {
               "fileReplacements": [
                 {
@@ -66,6 +83,9 @@
             "browserTarget": "electron-tracks:build"
           },
           "configurations": {
+            "web": {
+              "browserTarget": "electron-tracks:build:web"
+            },
             "production": {
               "browserTarget": "electron-tracks:build:production"
             }
@@ -90,7 +110,7 @@
             ],
             "styles": [
               "./node_modules/@angular/material/prebuilt-themes/indigo-pink.css",
-              "src/styles.css"
+              "src/styles.scss"
             ],
             "scripts": []
           }

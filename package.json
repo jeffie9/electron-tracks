@@ -1,11 +1,19 @@
 {
   "name": "electron-tracks",
   "version": "0.0.0",
-  "main": "app.js",
+  "main": "main.js",
   "scripts": {
+    "postinstall": "electron-builder install-app-deps",
     "ng": "ng",
-    "start": "ng serve",
-    "build": "ng build",
+    "start": "npm-run-all -p electron:serve ng:serve",
+    "build": "npm run electron:serve-tsc && ng build --base-href ./",
+    "build:dev": "npm run build -- -c dev",
+    "build:prod": "npm run build -- -c production",
+    "ng:serve": "ng serve -c web -o",
+    "electron:serve-tsc": "tsc -p tsconfig.serve.json",
+    "electron:serve": "wait-on tcp:4200 && npm run electron:serve-tsc && npx electron . --serve",
+    "electron:local": "npm run build:prod && npx electron .",
+    "electron:build": "npm run build:prod && electron-builder build",
     "test": "ng test",
     "lint": "ng lint",
     "e2e": "ng e2e",
@@ -37,6 +45,8 @@
     "@types/node": "^12.11.1",
     "codelyzer": "^6.0.0",
     "electron": "^9.2.0",
+    "electron-builder": "^22.8.0",
+    "electron-reload": "^1.5.0",
     "jasmine-core": "~3.5.0",
     "jasmine-spec-reporter": "~5.0.0",
     "karma": "~5.0.0",
@@ -44,9 +54,12 @@
     "karma-coverage-istanbul-reporter": "~3.0.2",
     "karma-jasmine": "~3.3.0",
     "karma-jasmine-html-reporter": "^1.5.0",
+    "npm-run-all": "^4.1.5",
     "protractor": "~7.0.0",
+    "spectron": "^11.1.0",
     "ts-node": "~7.0.0",
     "tslint": "~6.1.0",
-    "typescript": "~3.9.7"
+    "typescript": "~3.9.7",
+    "wait-on": "^5.2.0"
   }
 }

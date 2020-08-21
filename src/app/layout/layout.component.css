@@ -1,0 +1,20 @@
+.wrapper {
+    position: relative;
+}
+
+.wrapper canvas {
+    border: 1px solid black;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.mat-drawer-container {
+    height: 88vh;
+    margin: 10px;
+    border: 1px solid #555;
+}
+
+.mat-drawer {
+    width: 160px;
+}

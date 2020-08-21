@@ -1,1 +1,12 @@
 <p>library works!</p>
+<mat-list>
+    <mat-list-item *ngFor="let t of tracks"
+        (click)="select(t)">
+      <svg height="100">
+        <text y="12" font-size="smaller">{{ t.label }}</text>
+        <path [attr.d]="t.svg" 
+          fill="transparent" stroke="black" stroke-width="2"
+          transform="translate(60 50) scale(0.5 0.5)" />
+      </svg>
+    </mat-list-item>
+</mat-list>
