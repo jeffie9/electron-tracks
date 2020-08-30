@@ -1,84 +1,73 @@
-<p>track-editor works!</p>
-
-<div id="wrapper">
-    <canvas #canvas width="500" height="500"></canvas>
-</div>
-
-<form [formGroup]="trackForm">
-    <div>
-        <label>
-            Description:
-            <input type="text" formControlName="description">
-        </label>
-    </div>
-
-    <div [ngSwitch]="track?.type">
-
-        <div formGroupName="straight" *ngSwitchCase="'straight'">
-            <label>
-                Length:
-                <input type="text" formControlName="length">
-            </label>
+<mat-drawer-container>
+    <mat-drawer mode="side" opened><app-library></app-library></mat-drawer>
+    <mat-drawer-content>
+        <div id="wrapper">
+            <canvas #canvas width="500" height="500"></canvas>
         </div>
 
-        <div formGroupName="curve" *ngSwitchCase="'curve'">
-            <label>
-                Radius:
-                <input type="text" formControlName="radius">
-            </label>
-            <label>
-                Sweep:
-                <input type="text" formControlName="sweep">
-            </label>
-        </div>
+        <form [formGroup]="trackForm">
+            <mat-tab-group
+                    mat-align-tabs="center"
+                    animationDuration="0ms"
+                    (selectedIndexChange)="trackType.setValue($event)">
+                <mat-tab label="Straight" formGroupName="straight">
+                    <mat-form-field>
+                        <mat-label>Length:</mat-label>
+                        <input matInput formControlName="length">
+                    </mat-form-field>
+                </mat-tab>
+                <mat-tab label="Curve" formGroupName="curve">
+                    <mat-form-field>
+                        <mat-label>Radius:</mat-label>
+                        <input matInput formControlName="radius">
+                    </mat-form-field>
+                    <mat-form-field>
+                        <mat-label>Sweep:</mat-label>
+                        <input matInput formControlName="sweep">
+                    </mat-form-field>
+                </mat-tab>
+                <mat-tab label="Turnout" formGroupName="turnout">
+                    <mat-radio-group formControlName="direction">
+                        <mat-radio-button value="left">Left</mat-radio-button>
+                        <mat-radio-button value="right">Right</mat-radio-button>
+                    </mat-radio-group>
+                    <mat-form-field>
+                        <mat-label>Number:</mat-label>
+                        <input matInput formControlName="tNumber">
+                    </mat-form-field>
+                    <mat-form-field>
+                        <mat-label>Length:</mat-label>
+                        <input matInput formControlName="length">
+                    </mat-form-field>
+                    <mat-form-field>
+                        <mat-label>Radius:</mat-label>
+                        <input matInput formControlName="radius">
+                    </mat-form-field>
+                    <mat-form-field>
+                        <mat-label>Sweep:</mat-label>
+                        <input matInput formControlName="sweep">
+                    </mat-form-field>
+                    <mat-form-field>
+                        <mat-label>Lead:</mat-label>
+                        <input matInput formControlName="lead">
+                    </mat-form-field>
+                </mat-tab>
+                <mat-tab label="Crosing" formGroupName="crossing">
+                    <mat-form-field>
+                        <mat-label>Length:</mat-label>
+                        <input matInput formControlName="length">
+                    </mat-form-field>
+                    <mat-form-field>
+                        <mat-label>Angle:</mat-label>
+                        <input matInput formControlName="angle">
+                    </mat-form-field>
+                </mat-tab>
+            </mat-tab-group>
+            <mat-form-field>
+                <mat-label>Description:</mat-label>
+                <input matInput formControlName="description">
+            </mat-form-field>
+        </form>
 
-        <div formGroupName="turnout" *ngSwitchCase="'turnout'">
-            <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" formControlName="direction" id="inlineRadio1" value="left">
-                <label class="form-check-label" for="inlineRadio1">Left</label>
-            </div>
-            <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" formControlName="direction" id="inlineRadio2"
-                    value="right">
-                <label class="form-check-label" for="inlineRadio2">Right</label>
-            </div>
-            <label>
-                Number:
-                <input type="text" formControlName="tNumber">
-            </label>
-            <label>
-                Length:
-                <input type="text" formControlName="length">
-            </label>
-            <label>
-                Radius:
-                <input type="text" formControlName="radius">
-            </label>
-            <label>
-                Sweep:
-                <input type="text" formControlName="sweep">
-            </label>
-            <label>
-                Lead:
-                <input type="number" formControlName="lead">
-            </label>
-        </div>
-
-        <div formGroupName="crossing" *ngSwitchCase="'crossing'">
-            <label>
-                Length:
-                <input type="text" formControlName="length">
-            </label>
-            <label>
-                Angle:
-                <input type="text" formControlName="angle">
-            </label>
-        </div>
-
-    </div>
-
-</form>
-
-<div>
-    <pre *ngIf="!!track">{{ track | json }}</pre>
-</div>
+    </mat-drawer-content>
+</mat-drawer-container>
