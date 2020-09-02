@@ -2,9 +2,9 @@ import { Component, OnInit, ViewChild, ElementRef, AfterViewInit, OnDestroy } fr
 import { FormBuilder, FormGroup } from '@angular/forms';
 import { Subscription } from 'rxjs';
 
-import { Track } from '../track';
+import { Track, TrackType, HALF_SCALE_WIDTH, SCALE_WIDTH } from '../track';
 import { TrackService, inchesToScaleFeet, scaleFeetToInches, degreesToRadians, radiansToDegrees } from '../track.service';
-import { angleBetweenPoints, distance } from '../geometry';
+import { angleBetweenPoints, distance, intersection } from '../geometry';
 import { MatTabGroup } from '@angular/material/tabs';
 
 const MM_PER_IN = 25.400051;
@@ -58,6 +58,13 @@ export class TrackEditorComponent implements OnInit {
         }),
     });
     trackType = this.trackForm.get('trackType');
+    trackTypeFormGroupNames = new Map([
+        [TrackType.Straight, ['straight']],
+        [TrackType.Curve, ['curve']],
+        [TrackType.LeftTurnout, ['turnout']],
+        [TrackType.RightTurnout, ['turnout']],
+        [TrackType.Crossing, ['crossing']],
+    ]);
 
     constructor(
         private fb: FormBuilder,
@@ -129,9 +136,56 @@ export class TrackEditorComponent implements OnInit {
             this.canvasContext.strokeStyle = 'blue';
             this.canvasContext.stroke(this.trackOutline(this.track));
             // temporary markers
-            // this.canvasContext.beginPath();
-            // this.canvasContext.ellipse(0, 0, 2, 2, 0, 0, 2 * Math.PI);
-            // this.canvasContext.fill();
+            if (this.track.type === TrackType.Crossing) {
+                // const L1 = this.track.paths[0];
+                // const L2 = this.track.paths[1];
+                // const p = intersection(L1.x1, L1.y1, L1.x2, L1.y2, L2.x1, L2.y1, L2.x2, L2.y2);
+
+                let R1 = this.track.paths[0].straightOutlinePoints();
+                let R2 = this.track.paths[1].straightOutlinePoints();
+                let I1 = intersection(R1[0], R1[1], R1[2], R1[3], R2[0], R2[1], R2[2], R2[3]);
+                let I2 = intersection(R1[0], R1[1], R1[2], R1[3], R2[4], R2[5], R2[6], R2[7]);
+                let I3 = intersection(R1[4], R1[5], R1[6], R1[7], R2[4], R2[5], R2[6], R2[7]);
+                let I4 = intersection(R1[4], R1[5], R1[6], R1[7], R2[0], R2[1], R2[2], R2[3]);
+                this.canvasContext.fillStyle = 'red';
+                this.canvasContext.beginPath();
+                this.canvasContext.ellipse(I1[0], I1[1], 2, 2, 0, 0, 2 * Math.PI);
+                this.canvasContext.fill();
+                this.canvasContext.fillStyle = 'green';
+                this.canvasContext.beginPath();
+                this.canvasContext.ellipse(I2[0], I2[1], 2, 2, 0, 0, 2 * Math.PI);
+                this.canvasContext.fill();
+                this.canvasContext.fillStyle = 'yellow';
+                this.canvasContext.beginPath();
+                this.canvasContext.ellipse(I3[0], I3[1], 2, 2, 0, 0, 2 * Math.PI);
+                this.canvasContext.fill();
+                this.canvasContext.fillStyle = 'black';
+                this.canvasContext.beginPath();
+                this.canvasContext.ellipse(I4[0], I4[1], 2, 2, 0, 0, 2 * Math.PI);
+                this.canvasContext.fill();
+            }
+
+            if (this.track.type === TrackType.RightTurnout) {
+                let R1 = this.track.paths[0].straightOutlinePoints();
+                let R2 = this.track.paths[1].curveOutlinePoints();
+                let R = this.track.paths[1].r + HALF_SCALE_WIDTH;
+                let theta = (Math.PI / 2) - Math.asin((R - SCALE_WIDTH) / R);
+                let dx = Math.sin(theta) * R;
+                this.canvasContext.fillStyle = 'green';
+                this.canvasContext.beginPath();
+                this.canvasContext.ellipse(R2[6] + dx, R2[7], 2, 2, 0, 0, 2 * Math.PI);
+                this.canvasContext.fill();
+                console.log(dx, R1[4], R1[5]);
+                this.canvasContext.fillStyle = 'red';
+                this.canvasContext.beginPath();
+                this.canvasContext.ellipse(R2[6], R2[7], 2, 2, 0, 0, 2 * Math.PI);
+                this.canvasContext.fill();
+                this.canvasContext.fillStyle = 'black';
+                this.canvasContext.beginPath();
+                this.canvasContext.ellipse(0, 0, 2, 2, 0, 0, 2 * Math.PI);
+                this.canvasContext.fill();
+            }
+
             // this.track.paths.forEach(p => {
             //     this.canvasContext.beginPath();
             //     this.canvasContext.ellipse(p.x1, p.y1, 2, 2, 0, 0, 2 * Math.PI);
@@ -152,7 +206,8 @@ export class TrackEditorComponent implements OnInit {
         this.trackForm.reset({
             description: this.track.label
         }, { emitEvent: false });
-        const fg = this.trackForm.get(this.track.type) as FormGroup;
+        const fg = this.trackForm.get(this.trackTypeFormGroupNames.get(this.track.type)) as FormGroup;
+        console.log(this.trackTypeFormGroupNames.get(this.track.type), fg);
         const paths = this.track.paths;
         switch (this.track.type) {
             case 'straight':
@@ -165,7 +220,8 @@ export class TrackEditorComponent implements OnInit {
                 fg.get('radius').setValue(scaleFeetToInches(this.trackService.selectedScale, paths[0].r), { emitEvent: false });
                 fg.get('sweep').setValue(radiansToDegrees(paths[0].calcSweep()), { emitEvent: false });
                 break;
-            case 'turnout':
+            case 'left-turnout':
+            case 'right-turnout':
                 this.tabGroup.selectedIndex = 2;
                 fg.get('length').setValue(scaleFeetToInches(this.trackService.selectedScale,
                     Math.abs(paths[0].x2 - paths[0].x1)), { emitEvent: false });
@@ -254,6 +310,76 @@ export class TrackEditorComponent implements OnInit {
     }
 
     trackOutline(track: Track): Path2D {
-        return track.outline;
+        switch (track.type) {
+            case TrackType.Crossing:
+                return this.crossingOutline(track);
+            case TrackType.LeftTurnout:
+            case TrackType.RightTurnout:
+                return this.turnoutOutline(track);
+            default:
+                return track.outline;
+        }
+    }
+
+    crossingOutline(track: Track): Path2D {
+        let R1 = track.paths[0].straightOutlinePoints();
+        let R2 = track.paths[1].straightOutlinePoints();
+        let I1 = intersection(R1[0], R1[1], R1[2], R1[3], R2[0], R2[1], R2[2], R2[3]);
+        let I2 = intersection(R1[0], R1[1], R1[2], R1[3], R2[4], R2[5], R2[6], R2[7]);
+        let I3 = intersection(R1[4], R1[5], R1[6], R1[7], R2[4], R2[5], R2[6], R2[7]);
+        let I4 = intersection(R1[4], R1[5], R1[6], R1[7], R2[0], R2[1], R2[2], R2[3]);
+
+        const path = `
+            M ${R1[0]} ${R1[1]}
+            L ${I1[0]} ${I1[1]}
+            L ${R2[2]} ${R2[3]}
+            L ${R2[4]} ${R2[5]}
+            L ${I2[0]} ${I2[1]}
+            L ${R1[2]} ${R1[3]}
+            L ${R1[4]} ${R1[5]}
+            L ${I3[0]} ${I3[1]}
+            L ${R2[6]} ${R2[7]}
+            L ${R2[0]} ${R2[1]}
+            L ${I4[0]} ${I4[1]}
+            L ${R1[6]} ${R1[7]}
+            Z`;
+        return new Path2D(path);
+    }
+
+    turnoutOutline(track: Track): Path2D {
+        let R1 = track.paths[0].straightOutlinePoints();
+        let R2 = track.paths[1].curveOutlinePoints();
+        let R = track.paths[1].r + HALF_SCALE_WIDTH;
+        let theta = (Math.PI / 2) - Math.asin((R - SCALE_WIDTH) / R);
+        let dx = Math.sin(theta) * R;
+        let I1, path;
+
+        if (track.type === TrackType.LeftTurnout) {
+            I1 = [R2[4] - dx, R2[5]];
+            path = `
+                M ${R1[0]} ${R1[1]}
+                L ${R1[2]} ${R1[3]}
+                L ${R1[4]} ${R1[5]}
+                L ${R2[4]} ${R2[5]}
+                A ${R - SCALE_WIDTH} ${R - SCALE_WIDTH} 0 0 0 ${R2[6]} ${R2[7]}
+                L ${R2[0]} ${R2[1]}
+                A ${R} ${R} 0 0 1 ${I1[0]} ${I1[1]}
+                L ${R1[6]} ${R1[7]}
+                Z`;
+        } else if (track.type === TrackType.RightTurnout) {
+            I1 = [R2[6] + dx, R2[7]];
+            path = `
+                M ${R1[0]} ${R1[1]}
+                L ${R1[2]} ${R1[3]}
+                L ${R1[4]} ${R1[5]}
+                L ${I1[0]} ${I1[1]}
+                A ${R - SCALE_WIDTH} ${R - SCALE_WIDTH} 0 0 1 ${R2[2]} ${R2[3]}
+                L ${R2[4]} ${R2[5]}
+                A ${R} ${R} 0 0 0 ${R2[6]} ${R2[7]}
+                L ${R1[6]} ${R1[7]}
+                Z`;
+        }
+        
+        return new Path2D(path);
     }
 }

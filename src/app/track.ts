@@ -111,6 +111,11 @@ export class TrackPath {
     }
 
     straightOutline(): string {
+        let pts = this.straightOutlinePoints();
+        return `M ${pts[0]} ${pts[1]} L ${pts[2]} ${pts[3]} L ${pts[4]} ${pts[5]} L ${pts[6]} ${pts[7]} Z `;
+    }
+
+    straightOutlinePoints(): number[] {
         let x = this.x2 - this.x1;
         let y = this.y2 - this.y1;
         let length = Math.sqrt(x * x + y * y);
@@ -119,12 +124,18 @@ export class TrackPath {
         let mat = new Matrix()
             .rotateFromVector(this.x2 - this.x1, this.y2 - this.y1)
             .translate((this.x2 + this.x1) / 2, (this.y2 + this.y1) / 2);
-        let pts = mat.applyToArray([-halfLength, -HALF_SCALE_WIDTH, halfLength, -HALF_SCALE_WIDTH, halfLength, HALF_SCALE_WIDTH, -halfLength, HALF_SCALE_WIDTH]);
-
-        return `M ${pts[0]} ${pts[1]} L ${pts[2]} ${pts[3]} L ${pts[4]} ${pts[5]} L ${pts[6]} ${pts[7]} Z `;
+        return mat.applyToArray([-halfLength, -HALF_SCALE_WIDTH, halfLength, -HALF_SCALE_WIDTH, halfLength, HALF_SCALE_WIDTH, -halfLength, HALF_SCALE_WIDTH]);
     }
 
     curveOutline(): string {
+        let pts = this.curveOutlinePoints();
+        return `M ${pts[0]} ${pts[1]} ` +
+            `A ${this.r + HALF_SCALE_WIDTH} ${this.r + HALF_SCALE_WIDTH} 0 0 1 ${pts[2]} ${pts[3]} ` +
+            `L ${pts[4]} ${pts[5]} ` +
+            `A ${this.r - HALF_SCALE_WIDTH} ${this.r - HALF_SCALE_WIDTH} 0 0 0 ${pts[6]} ${pts[7]} Z `;
+    }
+
+    curveOutlinePoints(): number[] {
         let a = (angleBetweenPoints(this.xc, this.yc, this.x1, this.y1, this.x2, this.y2) + Math.PI) / 2;
         let xc = 0;
         let yc = this.r;
@@ -140,14 +151,9 @@ export class TrackPath {
             .rotateFromVector(this.x2 - this.x1, this.y2 - this.y1)
             .applyToArray([xc, yc, -tx, ty, tx, ty, bx, by, -bx, by]);
         // translate by the difference between 0,0 and the new path center
-        pts = new Matrix()
+        return new Matrix()
             .translate(this.xc - pts[0], this.yc - pts[1])
             .applyToArray(pts.slice(2));
-
-        return `M ${pts[0]} ${pts[1]} ` +
-            `A ${this.r + HALF_SCALE_WIDTH} ${this.r + HALF_SCALE_WIDTH} 0 0 1 ${pts[2]} ${pts[3]} ` +
-            `L ${pts[4]} ${pts[5]} ` +
-            `A ${this.r - HALF_SCALE_WIDTH} ${this.r - HALF_SCALE_WIDTH} 0 0 0 ${pts[6]} ${pts[7]} Z `;
     }
 
 }
@@ -157,7 +163,7 @@ export class Track {
     public paths: TrackPath[];
     public outline: Path2D;
     public svg: string;
-    public type: string;
+    public type: TrackType;
     public label: string;
 
     static fromData(data: any): Track {
@@ -180,7 +186,7 @@ export class Track {
         return t;
     }
 
-    static fromParts(id: number, paths: TrackPath[], outline: string, type: string, label: string): Track {
+    static fromParts(id: number, paths: TrackPath[], outline: string, type: TrackType, label: string): Track {
         let track = new Track();
         track.id = id;
         track.paths = paths;
@@ -196,7 +202,7 @@ export class Track {
         return Track.fromParts(0,
             [tp],
             tp.outline(),
-            'straight',
+            TrackType.Straight,
             label);
     }
 
@@ -205,7 +211,7 @@ export class Track {
         return Track.fromParts(0,
             [tp],
             tp.outline(),
-            'curve',
+            TrackType.Curve,
             label);
     }
 
@@ -217,7 +223,7 @@ export class Track {
         return Track.fromParts(0,
             [ tp1, tp2 ],
             tp1.outline() + tp2.outline(),
-            'crossing',
+            TrackType.Crossing,
             label);
     }
 
@@ -235,7 +241,7 @@ export class Track {
         return Track.fromParts(0,
             [ tpMain, tpCurveBranch ],
             tpMain.outline() + tpCurveBranch.outline(),
-            'turnout',
+            left ? TrackType.LeftTurnout : TrackType.RightTurnout,
             label);
     }
 
@@ -258,7 +264,7 @@ export class Track {
         return Track.fromParts(0,
             [ tpMain, tpBranch ],
             tpMain.outline() + tpBranch.outline(),
-            'turnout',
+            left ? TrackType.LeftCurvedTurnout : TrackType.RightCurvedTurnout,
             label);
     }
 
@@ -279,7 +285,7 @@ export class Track {
         return Track.fromParts(0,
             [ tpMain, tpBranch ],
             tpMain.outline() + tpBranch.outline(),
-            'turnout',
+            TrackType.WyeTurnout,
             label);
     }
 
