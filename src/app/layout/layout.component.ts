@@ -210,7 +210,7 @@ drawGlass(offsetX: number, offsetY: number, angle: number) {
   }
 
 mouseUp(e: MouseEvent) {
-    console.log('mouseUp', e);
+    console.log('mouseUp', this.toolButtonGroup.value, e);
     if (this.dragging) {
         // tell the browser we're handling this mouse event
         e.preventDefault();

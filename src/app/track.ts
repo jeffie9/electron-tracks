@@ -1,4 +1,4 @@
-import { closestPoints, angleBetweenPoints } from './geometry';
+import { closestPoints, angleBetweenPoints, intersection } from './geometry';
 import { Matrix } from './matrix';
 
 // prototype tie spacing ~ 19-21 inches
@@ -26,11 +26,13 @@ export class TrackPath {
         public y2: number,
         public xc?: number,
         public yc?: number,
-        public r?: number) {}
+        public r?: number,
+        public len?: number,
+        public sweep?: number) {}
 
     static straightPath(length: number): TrackPath {
         let halfLength = length / 2;
-        return new TrackPath(-halfLength, 0, halfLength, 0);
+        return new TrackPath(-halfLength, 0, halfLength, 0, undefined, undefined, undefined, length);
     }
 
     static curvePath(radius: number, sweep: number): TrackPath {
@@ -42,7 +44,7 @@ export class TrackPath {
         let dy = Math.sin(a);
         let x1 = xc - dx * radius;
         let y1 = yc - dy * radius;
-        return new TrackPath(-x1, y1, x1, y1, xc, yc, radius);
+        return new TrackPath(-x1, y1, x1, y1, xc, yc, radius, undefined, sweep);
     }
 
     calcAngleAtPoint(x: number, y: number): number {
@@ -75,7 +77,7 @@ export class TrackPath {
      */
     transform(mat: Matrix): TrackPath {
         let trx = mat.applyToArray([this.x1, this.y1, this.x2, this.y2, this.xc, this.yc]);
-        return new TrackPath(trx[0], trx[1], trx[2], trx[3], trx[4], trx[5], this.r);
+        return new TrackPath(trx[0], trx[1], trx[2], trx[3], trx[4], trx[5], this.r, this.len, this.sweep);
     }
 
     rotate(a: number) {
@@ -161,8 +163,8 @@ export class TrackPath {
 export class Track {
     public id: number;
     public paths: TrackPath[];
-    public outline: Path2D;
-    public svg: string;
+    private _outline: Path2D;
+    private _svg: string;
     public type: TrackType;
     public label: string;
 
@@ -177,10 +179,12 @@ export class Track {
                 e.y2,
                 e.xc,
                 e.yc,
-                e.r);
+                e.r,
+                e.len,
+                e.sweep);
         });
-        t.svg = data.outline;
-        t.outline = new Path2D(data.outline);
+        // t._svg = data.outline;
+        // t._outline = new Path2D(data.outline);
         t.type = data.type;
         t.label = data.label;
         return t;
@@ -190,8 +194,8 @@ export class Track {
         let track = new Track();
         track.id = id;
         track.paths = paths;
-        track.svg = outline;
-        track.outline = new Path2D(outline);
+        // track._svg = outline;
+        // track._outline = new Path2D(outline);
         track.type = type;
         track.label = label;
         return track;
@@ -304,12 +308,178 @@ export class Track {
                 if (e.r != null) t['r'] = e.r;
                 return t;
             }),
-            outline: this.svg,
+            // outline: this._svg,
             type: this.type,
             label: this.label
         };
     }
 
+    
+    public get outline() : Path2D {
+        if (!this._outline) {
+            this._outline = new Path2D(this.svg);
+        }
+        return this._outline;
+    }
+    
+    
+    public set outline(v : Path2D) {
+        this._outline = v;
+    }
+    
+    
+    public get svg() : string {
+        if (!this._svg) {
+            switch (this.type) {
+                case TrackType.Straight:
+                    this._svg = this.straightOutline();
+                    break;
+                case TrackType.Curve:
+                    this._svg = this.curveOutline();
+                    break;
+                case TrackType.Crossing:
+                    this._svg = this.crossingOutline();
+                    break;
+                case TrackType.LeftTurnout:
+                case TrackType.RightTurnout:
+                    this._svg = this.turnoutOutline();
+                    break;
+                case TrackType.LeftCurvedTurnout:
+                case TrackType.RightCurvedTurnout:
+                    this._svg = this.curveTurnoutOutline();
+                    break;
+                default:
+                    this._svg = this.paths[0].outline() + this.paths[1].outline();
+                    break;
+            }
+        }
+        return this._svg;
+    }
+    
+    public set svg(v : string) {
+        this._svg = v;
+    }
+    
+    straightOutline(): string {
+        let pts = this.paths[0].straightOutlinePoints();
+        return `
+            M ${pts[0]} ${pts[1]}
+            L ${pts[2]} ${pts[3]}
+            L ${pts[4]} ${pts[5]}
+            L ${pts[6]} ${pts[7]}
+            Z `;
+    }
+
+    curveOutline(): string {
+        let pts = this.paths[0].curveOutlinePoints();
+        return `
+            M ${pts[0]} ${pts[1]}
+            A ${this.paths[0].r + HALF_SCALE_WIDTH} ${this.paths[0].r + HALF_SCALE_WIDTH} 0 0 1 ${pts[2]} ${pts[3]}
+            L ${pts[4]} ${pts[5]}
+            A ${this.paths[0].r - HALF_SCALE_WIDTH} ${this.paths[0].r - HALF_SCALE_WIDTH} 0 0 0 ${pts[6]} ${pts[7]}
+            Z `;
+    }
+
+    crossingOutline(): string {
+        let R1 = this.paths[0].straightOutlinePoints();
+        let R2 = this.paths[1].straightOutlinePoints();
+        let I1 = intersection(R1[0], R1[1], R1[2], R1[3], R2[0], R2[1], R2[2], R2[3]);
+        let I2 = intersection(R1[0], R1[1], R1[2], R1[3], R2[4], R2[5], R2[6], R2[7]);
+        let I3 = intersection(R1[4], R1[5], R1[6], R1[7], R2[4], R2[5], R2[6], R2[7]);
+        let I4 = intersection(R1[4], R1[5], R1[6], R1[7], R2[0], R2[1], R2[2], R2[3]);
+
+        return `
+            M ${R1[0]} ${R1[1]}
+            L ${I1[0]} ${I1[1]}
+            L ${R2[2]} ${R2[3]}
+            L ${R2[4]} ${R2[5]}
+            L ${I2[0]} ${I2[1]}
+            L ${R1[2]} ${R1[3]}
+            L ${R1[4]} ${R1[5]}
+            L ${I3[0]} ${I3[1]}
+            L ${R2[6]} ${R2[7]}
+            L ${R2[0]} ${R2[1]}
+            L ${I4[0]} ${I4[1]}
+            L ${R1[6]} ${R1[7]}
+            Z`;
+    }
+
+    turnoutOutline(): string {
+        let R1 = this.paths[0].straightOutlinePoints();
+        let R2 = this.paths[1].curveOutlinePoints();
+        let R = this.paths[1].r + HALF_SCALE_WIDTH;
+        let theta = (Math.PI / 2) - Math.asin((R - SCALE_WIDTH) / R);
+        let dx = Math.sin(theta) * R;
+        let I1: number[];
+
+        if (this.type === TrackType.LeftTurnout) {
+            I1 = [R2[4] - dx, R2[5]];
+            return `
+                M ${R1[0]} ${R1[1]}
+                L ${R1[2]} ${R1[3]}
+                L ${R1[4]} ${R1[5]}
+                L ${R2[4]} ${R2[5]}
+                A ${R - SCALE_WIDTH} ${R - SCALE_WIDTH} 0 0 0 ${R2[6]} ${R2[7]}
+                L ${R2[0]} ${R2[1]}
+                A ${R} ${R} 0 0 1 ${I1[0]} ${I1[1]}
+                L ${R1[6]} ${R1[7]}
+                Z`;
+        } else if (this.type === TrackType.RightTurnout) {
+            I1 = [R2[6] + dx, R2[7]];
+            return `
+                M ${R1[0]} ${R1[1]}
+                L ${R1[2]} ${R1[3]}
+                L ${R1[4]} ${R1[5]}
+                L ${I1[0]} ${I1[1]}
+                A ${R - SCALE_WIDTH} ${R - SCALE_WIDTH} 0 0 1 ${R2[2]} ${R2[3]}
+                L ${R2[4]} ${R2[5]}
+                A ${R} ${R} 0 0 0 ${R2[6]} ${R2[7]}
+                L ${R1[6]} ${R1[7]}
+                Z`;
+        }
+        
+    }
+
+    curveTurnoutOutline():string {
+        let B1 = this.paths[0].curveOutlinePoints();
+        let B2 = this.paths[1].curveOutlinePoints();
+        let R1 = this.paths[0].r;
+        let R2 = this.paths[1].r;
+        let a = R2 + HALF_SCALE_WIDTH;
+        let b = R1 - HALF_SCALE_WIDTH;
+        let c = R1 - R2;
+        let theta = Math.acos((b*b + c*c - a*a) / (2 * b * c));
+        if (this.type === TrackType.LeftCurvedTurnout) {
+            theta = -theta;
+        }
+        let mat = new Matrix()
+            .translate(this.paths[0].xc, this.paths[0].yc)
+            .rotate(theta)
+            .translate(-this.paths[0].xc, -this.paths[0].yc);
+        if (this.type === TrackType.LeftCurvedTurnout) {
+            let I1 = mat.applyToPoint(B1[4], B1[5]);
+            return `
+                M ${B1[0]} ${B1[1]}
+                A ${R1 + HALF_SCALE_WIDTH} ${R1 + HALF_SCALE_WIDTH} 0 0 1 ${B1[2]} ${B1[3]}
+                L ${B1[4]} ${B1[5]}
+                A ${R2 - HALF_SCALE_WIDTH} ${R2 - HALF_SCALE_WIDTH} 0 0 0 ${B2[6]} ${B2[7]}
+                L ${B2[0]} ${B2[1]}
+                A ${R2 + HALF_SCALE_WIDTH} ${R2 + HALF_SCALE_WIDTH} 0 0 1 ${I1[0]} ${I1[1]}
+                A ${R1 - HALF_SCALE_WIDTH} ${R1 - HALF_SCALE_WIDTH} 0 0 0 ${B1[6]} ${B1[7]}
+                Z`;
+        } else if (this.type === TrackType.RightCurvedTurnout) {
+            let I1 = mat.applyToPoint(B1[6], B1[7]);
+            return `
+                M ${B1[0]} ${B1[1]}
+                A ${R1 + HALF_SCALE_WIDTH} ${R1 + HALF_SCALE_WIDTH} 0 0 1 ${B1[2]} ${B1[3]}
+                L ${B1[4]} ${B1[5]}
+                A ${R1 - HALF_SCALE_WIDTH} ${R1 - HALF_SCALE_WIDTH} 0 0 0 ${I1[0]} ${I1[1]}
+                A ${R2 + HALF_SCALE_WIDTH} ${R2 + HALF_SCALE_WIDTH} 0 0 1 ${B2[2]} ${B2[3]}
+                L ${B2[4]} ${B2[5]}
+                A ${R2 - HALF_SCALE_WIDTH} ${R2 - HALF_SCALE_WIDTH} 0 0 0 ${B2[6]} ${B2[7]}
+                Z`;
+        }
+    }
 }
 
 export class TrackRef {

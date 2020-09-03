@@ -6,6 +6,7 @@ import { Track, TrackType, HALF_SCALE_WIDTH, SCALE_WIDTH } from '../track';
 import { TrackService, inchesToScaleFeet, scaleFeetToInches, degreesToRadians, radiansToDegrees } from '../track.service';
 import { angleBetweenPoints, distance, intersection } from '../geometry';
 import { MatTabGroup } from '@angular/material/tabs';
+import { Matrix } from '../matrix';
 
 const MM_PER_IN = 25.400051;
 
@@ -165,20 +166,27 @@ export class TrackEditorComponent implements OnInit {
                 this.canvasContext.fill();
             }
 
-            if (this.track.type === TrackType.RightTurnout) {
-                let R1 = this.track.paths[0].straightOutlinePoints();
+            if (this.track.type === TrackType.RightCurvedTurnout) {
+                let R1 = this.track.paths[0].curveOutlinePoints();
                 let R2 = this.track.paths[1].curveOutlinePoints();
-                let R = this.track.paths[1].r + HALF_SCALE_WIDTH;
-                let theta = (Math.PI / 2) - Math.asin((R - SCALE_WIDTH) / R);
-                let dx = Math.sin(theta) * R;
+                let a = this.track.paths[1].r + HALF_SCALE_WIDTH;
+                let b = this.track.paths[0].r - HALF_SCALE_WIDTH;
+                let c = this.track.paths[0].r - this.track.paths[1].r;
+                let theta = Math.acos((b*b + c*c - a*a) / (2 * b * c));
+                let mat = new Matrix()
+                    .translate(this.track.paths[0].xc, this.track.paths[0].yc)
+                    .rotate(theta)
+                    .translate(-this.track.paths[0].xc, -this.track.paths[0].yc);
+                let I1 = mat.applyToPoint(R1[6], R1[7]);
+                console.log('I', a, b, c, theta, I1);
+
                 this.canvasContext.fillStyle = 'green';
                 this.canvasContext.beginPath();
-                this.canvasContext.ellipse(R2[6] + dx, R2[7], 2, 2, 0, 0, 2 * Math.PI);
+                this.canvasContext.ellipse(I1[0], I1[1], 2, 2, 0, 0, 2 * Math.PI);
                 this.canvasContext.fill();
-                console.log(dx, R1[4], R1[5]);
                 this.canvasContext.fillStyle = 'red';
                 this.canvasContext.beginPath();
-                this.canvasContext.ellipse(R2[6], R2[7], 2, 2, 0, 0, 2 * Math.PI);
+                this.canvasContext.ellipse(R1[6], R1[7], 2, 2, 0, 0, 2 * Math.PI);
                 this.canvasContext.fill();
                 this.canvasContext.fillStyle = 'black';
                 this.canvasContext.beginPath();
