@@ -348,6 +348,9 @@ export class Track {
                 case TrackType.RightCurvedTurnout:
                     this._svg = this.curveTurnoutOutline();
                     break;
+                case TrackType.WyeTurnout:
+                    this._svg = this.wyeTurnoutOutline();
+                    break;
                 default:
                     this._svg = this.paths[0].outline() + this.paths[1].outline();
                     break;
@@ -479,6 +482,30 @@ export class Track {
                 A ${R2 - HALF_SCALE_WIDTH} ${R2 - HALF_SCALE_WIDTH} 0 0 0 ${B2[6]} ${B2[7]}
                 Z`;
         }
+    }
+
+    wyeTurnoutOutline(): string {
+        let R1 = this.paths[0].curveOutlinePoints();
+        let R2 = this.paths[1].curveOutlinePoints();
+        let R = this.paths[0].r;
+        let a = R;
+        let b = R + HALF_SCALE_WIDTH;
+        let theta = ((Math.PI / 2)) - Math.asin(a / b);
+        let mat = new Matrix()
+            .translate(this.paths[0].xc, this.paths[0].yc)
+            .rotate(theta)
+            .translate(-this.paths[0].xc, -this.paths[0].yc);
+        let I1 = mat.applyToPoint(R1[0], R1[1]);
+
+        return `
+            M ${R1[0]} ${R1[1]}
+            A ${R - HALF_SCALE_WIDTH} ${R - HALF_SCALE_WIDTH} 0 0 0 ${R2[6]} ${R2[7]}
+            L ${R2[0]} ${R2[1]}
+            A ${R + HALF_SCALE_WIDTH} ${R + HALF_SCALE_WIDTH} 0 0 1 ${I1[0]} ${I1[1]}
+            A ${R + HALF_SCALE_WIDTH} ${R + HALF_SCALE_WIDTH} 0 0 1 ${R1[2]} ${R1[3]}
+            L ${R1[4]} ${R1[5]}
+            A ${R - HALF_SCALE_WIDTH} ${R - HALF_SCALE_WIDTH} 0 0 0 ${R1[6]} ${R1[7]}
+            Z`;
     }
 }
 

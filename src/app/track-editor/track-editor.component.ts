@@ -135,50 +135,20 @@ export class TrackEditorComponent implements OnInit {
         this.canvasContext.clearRect(-this.canvas.nativeElement.width / 2, -this.canvas.nativeElement.height / 2, this.canvas.nativeElement.width, this.canvas.nativeElement.height);
         if (this.track) {
             this.canvasContext.strokeStyle = 'blue';
-            this.canvasContext.stroke(this.trackOutline(this.track));
+            this.canvasContext.stroke(this.track.outline);
             // temporary markers
-            if (this.track.type === TrackType.Crossing) {
-                // const L1 = this.track.paths[0];
-                // const L2 = this.track.paths[1];
-                // const p = intersection(L1.x1, L1.y1, L1.x2, L1.y2, L2.x1, L2.y1, L2.x2, L2.y2);
-
-                let R1 = this.track.paths[0].straightOutlinePoints();
-                let R2 = this.track.paths[1].straightOutlinePoints();
-                let I1 = intersection(R1[0], R1[1], R1[2], R1[3], R2[0], R2[1], R2[2], R2[3]);
-                let I2 = intersection(R1[0], R1[1], R1[2], R1[3], R2[4], R2[5], R2[6], R2[7]);
-                let I3 = intersection(R1[4], R1[5], R1[6], R1[7], R2[4], R2[5], R2[6], R2[7]);
-                let I4 = intersection(R1[4], R1[5], R1[6], R1[7], R2[0], R2[1], R2[2], R2[3]);
-                this.canvasContext.fillStyle = 'red';
-                this.canvasContext.beginPath();
-                this.canvasContext.ellipse(I1[0], I1[1], 2, 2, 0, 0, 2 * Math.PI);
-                this.canvasContext.fill();
-                this.canvasContext.fillStyle = 'green';
-                this.canvasContext.beginPath();
-                this.canvasContext.ellipse(I2[0], I2[1], 2, 2, 0, 0, 2 * Math.PI);
-                this.canvasContext.fill();
-                this.canvasContext.fillStyle = 'yellow';
-                this.canvasContext.beginPath();
-                this.canvasContext.ellipse(I3[0], I3[1], 2, 2, 0, 0, 2 * Math.PI);
-                this.canvasContext.fill();
-                this.canvasContext.fillStyle = 'black';
-                this.canvasContext.beginPath();
-                this.canvasContext.ellipse(I4[0], I4[1], 2, 2, 0, 0, 2 * Math.PI);
-                this.canvasContext.fill();
-            }
-
-            if (this.track.type === TrackType.RightCurvedTurnout) {
+            if (this.track.type === TrackType.WyeTurnout) {
                 let R1 = this.track.paths[0].curveOutlinePoints();
                 let R2 = this.track.paths[1].curveOutlinePoints();
-                let a = this.track.paths[1].r + HALF_SCALE_WIDTH;
-                let b = this.track.paths[0].r - HALF_SCALE_WIDTH;
-                let c = this.track.paths[0].r - this.track.paths[1].r;
-                let theta = Math.acos((b*b + c*c - a*a) / (2 * b * c));
+                let a = this.track.paths[0].r;
+                let b = this.track.paths[0].r + HALF_SCALE_WIDTH;
+                let theta = ((Math.PI / 2)) - Math.asin(a / b);
                 let mat = new Matrix()
                     .translate(this.track.paths[0].xc, this.track.paths[0].yc)
                     .rotate(theta)
                     .translate(-this.track.paths[0].xc, -this.track.paths[0].yc);
-                let I1 = mat.applyToPoint(R1[6], R1[7]);
-                console.log('I', a, b, c, theta, I1);
+                let I1 = mat.applyToPoint(R1[0], R1[1]);
+                console.log('I', a, b, theta, I1);
 
                 this.canvasContext.fillStyle = 'green';
                 this.canvasContext.beginPath();
@@ -188,10 +158,14 @@ export class TrackEditorComponent implements OnInit {
                 this.canvasContext.beginPath();
                 this.canvasContext.ellipse(R1[6], R1[7], 2, 2, 0, 0, 2 * Math.PI);
                 this.canvasContext.fill();
-                this.canvasContext.fillStyle = 'black';
+                this.canvasContext.fillStyle = 'magenta';
                 this.canvasContext.beginPath();
-                this.canvasContext.ellipse(0, 0, 2, 2, 0, 0, 2 * Math.PI);
+                this.canvasContext.ellipse(R1[2], R1[3], 2, 2, 0, 0, 2 * Math.PI);
                 this.canvasContext.fill();
+                // this.canvasContext.fillStyle = 'black';
+                // this.canvasContext.beginPath();
+                // this.canvasContext.ellipse(0, 0, 2, 2, 0, 0, 2 * Math.PI);
+                // this.canvasContext.fill();
             }
 
             // this.track.paths.forEach(p => {
@@ -317,77 +291,4 @@ export class TrackEditorComponent implements OnInit {
         }
     }
 
-    trackOutline(track: Track): Path2D {
-        switch (track.type) {
-            case TrackType.Crossing:
-                return this.crossingOutline(track);
-            case TrackType.LeftTurnout:
-            case TrackType.RightTurnout:
-                return this.turnoutOutline(track);
-            default:
-                return track.outline;
-        }
-    }
-
-    crossingOutline(track: Track): Path2D {
-        let R1 = track.paths[0].straightOutlinePoints();
-        let R2 = track.paths[1].straightOutlinePoints();
-        let I1 = intersection(R1[0], R1[1], R1[2], R1[3], R2[0], R2[1], R2[2], R2[3]);
-        let I2 = intersection(R1[0], R1[1], R1[2], R1[3], R2[4], R2[5], R2[6], R2[7]);
-        let I3 = intersection(R1[4], R1[5], R1[6], R1[7], R2[4], R2[5], R2[6], R2[7]);
-        let I4 = intersection(R1[4], R1[5], R1[6], R1[7], R2[0], R2[1], R2[2], R2[3]);
-
-        const path = `
-            M ${R1[0]} ${R1[1]}
-            L ${I1[0]} ${I1[1]}
-            L ${R2[2]} ${R2[3]}
-            L ${R2[4]} ${R2[5]}
-            L ${I2[0]} ${I2[1]}
-            L ${R1[2]} ${R1[3]}
-            L ${R1[4]} ${R1[5]}
-            L ${I3[0]} ${I3[1]}
-            L ${R2[6]} ${R2[7]}
-            L ${R2[0]} ${R2[1]}
-            L ${I4[0]} ${I4[1]}
-            L ${R1[6]} ${R1[7]}
-            Z`;
-        return new Path2D(path);
-    }
-
-    turnoutOutline(track: Track): Path2D {
-        let R1 = track.paths[0].straightOutlinePoints();
-        let R2 = track.paths[1].curveOutlinePoints();
-        let R = track.paths[1].r + HALF_SCALE_WIDTH;
-        let theta = (Math.PI / 2) - Math.asin((R - SCALE_WIDTH) / R);
-        let dx = Math.sin(theta) * R;
-        let I1, path;
-
-        if (track.type === TrackType.LeftTurnout) {
-            I1 = [R2[4] - dx, R2[5]];
-            path = `
-                M ${R1[0]} ${R1[1]}
-                L ${R1[2]} ${R1[3]}
-                L ${R1[4]} ${R1[5]}
-                L ${R2[4]} ${R2[5]}
-                A ${R - SCALE_WIDTH} ${R - SCALE_WIDTH} 0 0 0 ${R2[6]} ${R2[7]}
-                L ${R2[0]} ${R2[1]}
-                A ${R} ${R} 0 0 1 ${I1[0]} ${I1[1]}
-                L ${R1[6]} ${R1[7]}
-                Z`;
-        } else if (track.type === TrackType.RightTurnout) {
-            I1 = [R2[6] + dx, R2[7]];
-            path = `
-                M ${R1[0]} ${R1[1]}
-                L ${R1[2]} ${R1[3]}
-                L ${R1[4]} ${R1[5]}
-                L ${I1[0]} ${I1[1]}
-                A ${R - SCALE_WIDTH} ${R - SCALE_WIDTH} 0 0 1 ${R2[2]} ${R2[3]}
-                L ${R2[4]} ${R2[5]}
-                A ${R} ${R} 0 0 0 ${R2[6]} ${R2[7]}
-                L ${R1[6]} ${R1[7]}
-                Z`;
-        }
-        
-        return new Path2D(path);
-    }
 }
